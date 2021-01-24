@@ -36,15 +36,12 @@ namespace Nololiyt.NCaptchaExtensions.Redis
                 ticket = $"{this.prefix}{Guid.NewGuid():N}";
             }
             while (!await this.database.StringSetAsync(
-                ticket, ticket, this.TicketsLifeTime, When.NotExists).ConfigureAwait(false));
+                ticket, string.Empty, this.TicketsLifeTime, When.NotExists).ConfigureAwait(false));
             return ticket;
         }
         public async ValueTask<bool> VerifyAsync(string ticket, CancellationToken cancellationToken = default)
         {
-            var result = await this.database.StringGetAsync(ticket).ConfigureAwait(false);
-            if (result.IsNull)
-                return false;
-            return (string)result == ticket;
+            return await this.database.KeyDeleteAsync(ticket).ConfigureAwait(false);
         }
     }
 }

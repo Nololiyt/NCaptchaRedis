@@ -1,4 +1,5 @@
-﻿using Nololiyt.Captcha.Interfaces;
+﻿using Nololiyt.Captcha.CaptchaFactories;
+using Nololiyt.Captcha.Interfaces;
 using StackExchange.Redis;
 using System;
 using System.Threading;
@@ -19,7 +20,6 @@ namespace Nololiyt.NCaptchaExtensions.Redis
             this.prefix = prefix;
         }
         public TimeSpan? AnswersLifeTime { get; }
-
         public void Dispose()
         {
             this.connectionMultiplexer.Dispose();
@@ -37,13 +37,10 @@ namespace Nololiyt.NCaptchaExtensions.Redis
                 id, answer, this.AnswersLifeTime, When.NotExists).ConfigureAwait(false));
             return id;
         }
-        public async ValueTask<string?> TryGetAndRemoveAsync(string id,
-            CancellationToken cancellationToken = default)
+
+        public async ValueTask<string?> TryGetAsync(string id, CancellationToken cancellationToken = default)
         {
-            var result = await this.database.StringGetAsync(id).ConfigureAwait(false);
-            if (result.IsNull)
-                return null;
-            return result;
+            return await this.database.StringGetSetAsync(id, RedisValue.Null).ConfigureAwait(false);
         }
     }
 }
