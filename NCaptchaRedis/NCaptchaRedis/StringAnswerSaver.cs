@@ -40,7 +40,9 @@ namespace Nololiyt.NCaptchaExtensions.Redis
 
         public async ValueTask<string?> TryGetAsync(string id, CancellationToken cancellationToken = default)
         {
-            return await this.database.StringGetSetAsync(id, RedisValue.Null).ConfigureAwait(false);
+            var result = await this.database.StringGetAsync(id).ConfigureAwait(false);
+            _ = this.database.KeyDeleteAsync(id);
+            return result;
         }
     }
 }
