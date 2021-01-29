@@ -1,5 +1,4 @@
 ﻿using Nololiyt.Captcha.CaptchaFactories;
-using Nololiyt.Captcha.Interfaces;
 using StackExchange.Redis;
 using System;
 using System.Threading;
@@ -9,20 +8,20 @@ namespace Nololiyt.NCaptchaExtensions.Redis
 {
     public sealed class StringAnswerSaver : ICaptchaAnswerSaver<string>
     {
-        private readonly ConnectionMultiplexer connectionMultiplexer;
-        private readonly IDatabase database;
+        private readonly RedisDatabaseDefiniton databaseDefiniton;
         private readonly string prefix;
-        public StringAnswerSaver(string prefix, TimeSpan? answersLifeTime, string redisConnectionString, int db = -1)
+
+        public StringAnswerSaver(string prefix, TimeSpan? answersLifeTime,
+            RedisDatabaseDefiniton databaseDefiniton)
         {
             this.AnswersLifeTime = answersLifeTime;
-            this.connectionMultiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
-            this.database = this.connectionMultiplexer.GetDatabase(db);
+            this.databaseDefiniton = databaseDefiniton;
             this.prefix = prefix;
         }
         public TimeSpan? AnswersLifeTime { get; }
         public void Dispose()
         {
-            this.connectionMultiplexer.Dispose();
+            this.databaseDefiniton.Dispose();
             GC.SuppressFinalize(this);
         }
         public async ValueTask<string> SaveAsync(string answer,
@@ -33,15 +32,15 @@ namespace Nololiyt.NCaptchaExtensions.Redis
             {
                 id = $"{this.prefix}{Guid.NewGuid():N}";
             }
-            while (!await this.database.StringSetAsync(
+            while (!await this.databaseDefiniton.Database.StringSetAsync(
                 id, answer, this.AnswersLifeTime, When.NotExists).ConfigureAwait(false));
             return id;
         }
 
         public async ValueTask<string?> TryGetAsync(string id, CancellationToken cancellationToken = default)
         {
-            var result = await this.database.StringGetAsync(id).ConfigureAwait(false);
-            _ = this.database.KeyDeleteAsync(id);
+            var result = await this.databaseDefiniton.Database.StringGetAsync(id).ConfigureAwait(false);
+            _ = this.databaseDefiniton.Database.KeyDeleteAsync(id);
             return result;
         }
     }

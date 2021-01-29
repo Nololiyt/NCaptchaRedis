@@ -1,9 +1,6 @@
 ﻿using Nololiyt.Captcha.Interfaces;
 using StackExchange.Redis;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,21 +8,20 @@ namespace Nololiyt.NCaptchaExtensions.Redis
 {
     public sealed class TicketFactory : ITicketFactory
     {
-        private readonly ConnectionMultiplexer connectionMultiplexer;
-        private readonly IDatabase database;
+        private readonly RedisDatabaseDefiniton databaseDefiniton;
         private readonly string prefix;
-        public TicketFactory(string prefix, TimeSpan? ticketsLifeTime, string redisConnectionString, int db = -1)
+        public TicketFactory(string prefix, TimeSpan? ticketsLifeTime,
+            RedisDatabaseDefiniton databaseDefiniton)
         {
             this.TicketsLifeTime = ticketsLifeTime;
-            this.connectionMultiplexer = ConnectionMultiplexer.Connect(redisConnectionString);
-            this.database = this.connectionMultiplexer.GetDatabase(db);
+            this.databaseDefiniton = databaseDefiniton;
             this.prefix = prefix;
         }
         public TimeSpan? TicketsLifeTime { get; }
 
         public void Dispose()
         {
-            this.connectionMultiplexer.Dispose();
+            this.databaseDefiniton.Dispose();
             GC.SuppressFinalize(this);
         }
         public async ValueTask<string> GenerateNewAsync(CancellationToken cancellationToken = default)
@@ -35,13 +31,13 @@ namespace Nololiyt.NCaptchaExtensions.Redis
             {
                 ticket = $"{this.prefix}{Guid.NewGuid():N}";
             }
-            while (!await this.database.StringSetAsync(
+            while (!await this.databaseDefiniton.Database.StringSetAsync(
                 ticket, string.Empty, this.TicketsLifeTime, When.NotExists).ConfigureAwait(false));
             return ticket;
         }
         public async ValueTask<bool> VerifyAsync(string ticket, CancellationToken cancellationToken = default)
         {
-            return await this.database.KeyDeleteAsync(ticket).ConfigureAwait(false);
+            return await this.databaseDefiniton.Database.KeyDeleteAsync(ticket).ConfigureAwait(false);
         }
     }
 }
